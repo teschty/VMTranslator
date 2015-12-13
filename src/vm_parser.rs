@@ -43,6 +43,7 @@ pub enum VMMemorySegment {
 pub struct Parser {
     pub input: Vec<String>,
     pub index: usize,
+    pub file_name: String,
 }
 
 impl Parser {
@@ -121,10 +122,11 @@ impl Parser {
         }
     }
 
-    pub fn new(input: Vec<String>) -> Parser {
+    pub fn new(file_name: String, input: Vec<String>) -> Parser {
         Parser {
             input: input,
             index: 0,
+            file_name: file_name,
         }
     }
 

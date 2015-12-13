@@ -7,6 +7,7 @@ pub struct CodeWriter {
     output: File,
     jump_flag: i32,
     label_count: i32,
+    pub file_name: String
 }
 
 impl CodeWriter {
@@ -17,6 +18,7 @@ impl CodeWriter {
             output: file,
             jump_flag: 0,
             label_count: 0,
+            file_name: "".to_string()
         })
     }
 
@@ -59,7 +61,7 @@ impl CodeWriter {
                         }
                     }
                     VMMemorySegment::Static =>
-                        self.push_template(&(16 + i).to_string()[..], i, true),
+                        format!("@{}{}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n", self.file_name, i)
                 }
             }
             VMCommand::Pop(seg, i) => {
@@ -77,7 +79,7 @@ impl CodeWriter {
                         }
                     }
                     VMMemorySegment::Static =>
-                        self.pop_template(&(16 + i).to_string()[..], i, true),
+                        format!("@{}{}\nD=A\n@R13\nM=D\n@SP\nAM=M-1\nD=M\n@R13\nA=M\nM=D\n", self.file_name, i),
                     _ => "".to_string(),
                 }
             }
@@ -127,15 +129,15 @@ impl CodeWriter {
         self.label_count += 1;
         format!(
             "@RETURN_LABEL{}\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n\
-            {}{}{}{}@SP\nD=M\n@5\nD=D-A\n@{}\nD=D-A, @ARG\nM=D\n\
+            {}{}{}{}@SP\nD=M\n@5\nD=D-A\n@{}\nD=D-A\n@ARG\nM=D\n\
             @SP\nD=M\n@LCL\nM=D\n@{}\n0;JMP\n(RETURN_LABEL{})\n",
-            self.label_count.to_string(), self.push_template("LCL", 0, true),
+            self.label_count - 1, self.push_template("LCL", 0, true),
             self.push_template("ARG", 0, true), self.push_template("THIS", 0, true),
-            self.push_template("THAT", 0, true), num_args, func_name, self.label_count.to_string())
+            self.push_template("THAT", 0, true), num_args, func_name, self.label_count - 1)
     }
 
     fn write_func(&mut self, func_name: &str, num_locals: i32) -> String {
-        let bytes = format!("({})", func_name).into_bytes();
+        let bytes = format!("({})\n", func_name).into_bytes();
 
         match self.output.write_all(&bytes[..]) {
             Ok(_) => {},
@@ -162,7 +164,7 @@ impl CodeWriter {
 
     fn return_template(&mut self) -> String {
         format!("@LCL\nD=M\n@R11\nM=D\n@5\nA=D-A\nD=M\n@R12\n\
-            M=D\n{}@ARG\nD=M\n@SP\nM=D+1\n{}{}{}{}@R12\nA=M\n",
+            M=D\n{}@ARG\nD=M\n@SP\nM=D+1\n{}{}{}{}@R12\nA=M\n0;JMP\n",
             self.pop_template("ARG", 0, false),
             self.save_template("THAT"), self.save_template("THIS"),
             self.save_template("ARG"), self.save_template("LCL"))
