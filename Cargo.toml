@@ -1,0 +1,4 @@
+[package]
+name = "vmtranslator"
+version = "0.1.0"
+authors = ["Tyler <teschty@tamu.edu>"]
